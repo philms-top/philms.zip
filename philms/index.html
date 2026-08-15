@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>philms — a viewing log</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2214%22 fill=%22%2317140f%22/><circle cx=%2250%22 cy=%2250%22 r=%2222%22 fill=%22none%22 stroke=%22%23b4291f%22 stroke-width=%228%22/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- filmstrip signature bar -->
+<div class="filmstrip" aria-hidden="true"></div>
+
+<div id="app">
+
+  <!-- ============ LOGIN SCREEN ============ -->
+  <section id="login-screen" class="screen">
+    <div class="login-card">
+      <p class="eyebrow">philms.top</p>
+      <h1 class="wordmark">philms</h1>
+      <p class="tagline">a private viewing log</p>
+
+      <form id="login-form" class="login-form">
+        <label class="field">
+          <span>Email</span>
+          <input type="email" id="login-email" autocomplete="email" required>
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" id="login-password" autocomplete="current-password" required>
+        </label>
+        <button type="submit" class="btn btn-primary">Enter</button>
+        <p id="login-error" class="form-error" hidden></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ MAIN SCREEN ============ -->
+  <section id="main-screen" class="screen" hidden>
+
+    <header class="masthead">
+      <div class="masthead-left">
+        <p class="eyebrow">philms.top</p>
+        <h1 class="wordmark">philms</h1>
+      </div>
+      <div class="masthead-right">
+        <span id="entry-count" class="counter-badge">No. 000</span>
+        <button id="logout-btn" class="btn btn-ghost">Sign out</button>
+      </div>
+    </header>
+
+    <!-- LOG A FILM -->
+    <section class="ledger">
+      <h2 class="ledger-title">Log a film</h2>
+      <div class="ledger-row">
+        <input type="text" id="search-input" class="ledger-input" placeholder="Type a title you've just come across…" autocomplete="off">
+        <button id="search-btn" class="btn btn-primary">Search</button>
+      </div>
+      <div id="search-results" class="search-results" hidden></div>
+
+      <!-- confirm / annotate before saving -->
+      <div id="draft-panel" class="draft-panel" hidden>
+        <div class="draft-poster">
+          <img id="draft-poster-img" alt="">
+        </div>
+        <div class="draft-fields">
+          <h3 id="draft-title" class="draft-title"></h3>
+          <p id="draft-meta" class="draft-meta mono"></p>
+
+          <div class="draft-controls">
+            <div class="toggle-group" role="group" aria-label="Watched status">
+              <button type="button" class="toggle-btn" data-field="status" data-value="not_watched">Not watched</button>
+              <button type="button" class="toggle-btn" data-field="status" data-value="watched">Watched</button>
+            </div>
+            <div class="toggle-group" role="group" aria-label="Rating">
+              <button type="button" class="toggle-btn" data-field="rating" data-value="loved">♥ Loved</button>
+              <button type="button" class="toggle-btn" data-field="rating" data-value="disliked">✕ Disliked</button>
+              <button type="button" class="toggle-btn" data-field="rating" data-value="">No rating</button>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Tags <em>(comma separated — e.g. "study reference, criterion, 16mm")</em></span>
+            <input type="text" id="draft-tags" placeholder="">
+          </label>
+          <label class="field">
+            <span>Notes</span>
+            <textarea id="draft-notes" rows="2" placeholder="Where you heard about it, why it's on the list…"></textarea>
+          </label>
+
+          <div class="draft-actions">
+            <button id="draft-save" class="btn btn-primary">Add to log</button>
+            <button id="draft-cancel" class="btn btn-ghost">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FILTERS -->
+    <section class="filters">
+      <div class="filter-group" id="filter-status">
+        <button class="filter-chip is-active" data-filter="all">All</button>
+        <button class="filter-chip" data-filter="not_watched">Not watched</button>
+        <button class="filter-chip" data-filter="watched">Watched</button>
+        <button class="filter-chip" data-filter="loved">Loved</button>
+        <button class="filter-chip" data-filter="disliked">Disliked</button>
+      </div>
+      <input type="text" id="tag-filter" class="tag-filter-input" placeholder="filter by tag or genre…">
+      <select id="sort-select" class="sort-select">
+        <option value="added_desc">Newest logged</option>
+        <option value="added_asc">Oldest logged</option>
+        <option value="year_desc">Release year ↓</option>
+        <option value="year_asc">Release year ↑</option>
+        <option value="title_asc">Title A–Z</option>
+      </select>
+    </section>
+
+    <!-- CONTACT SHEET GRID -->
+    <section id="sheet" class="sheet" aria-label="Film log"></section>
+    <p id="empty-state" class="empty-state" hidden>Nothing logged yet. Drop the first title in above.</p>
+
+  </section>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
