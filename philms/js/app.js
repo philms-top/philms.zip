@@ -1,4 +1,4 @@
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ---------------------------------------------------------------------------
 // State
@@ -15,7 +15,7 @@ const el = (id) => document.getElementById(id);
 // Auth
 // ---------------------------------------------------------------------------
 async function init() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     showMain();
   } else {
@@ -41,7 +41,7 @@ el("login-form").addEventListener("submit", async (e) => {
   const errEl = el("login-error");
   errEl.hidden = true;
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) {
     errEl.textContent = error.message;
     errEl.hidden = false;
@@ -51,7 +51,7 @@ el("login-form").addEventListener("submit", async (e) => {
 });
 
 el("logout-btn").addEventListener("click", async () => {
-  await supabase.auth.signOut();
+  await supabaseClient.auth.signOut();
   showLogin();
 });
 
@@ -159,7 +159,7 @@ el("draft-cancel").addEventListener("click", () => {
 
 el("draft-save").addEventListener("click", async () => {
   if (!currentDraft) return;
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await supabaseClient.auth.getUser();
 
   const tags = el("draft-tags").value.split(",").map((t) => t.trim()).filter(Boolean);
   const notes = el("draft-notes").value.trim();
@@ -180,7 +180,7 @@ el("draft-save").addEventListener("click", async () => {
     watched_at: currentDraft.status === "watched" ? new Date().toISOString() : null,
   };
 
-  const { error } = await supabase.from("films").insert(record);
+  const { error } = await supabaseClient.from("films").insert(record);
   if (error) {
     alert("Couldn't save: " + error.message);
     return;
@@ -196,7 +196,7 @@ el("draft-save").addEventListener("click", async () => {
 // Load + render the log
 // ---------------------------------------------------------------------------
 async function loadFilms() {
-  const { data, error } = await supabase.from("films").select("*").order("added_at", { ascending: true });
+  const { data, error } = await supabaseClient.from("films").select("*").order("added_at", { ascending: true });
   if (error) {
     console.error(error);
     return;
@@ -298,7 +298,7 @@ function render() {
 
 async function toggleStatus(f) {
   const newStatus = f.status === "watched" ? "not_watched" : "watched";
-  const { error } = await supabase.from("films").update({
+  const { error } = await supabaseClient.from("films").update({
     status: newStatus,
     watched_at: newStatus === "watched" ? new Date().toISOString() : null,
   }).eq("id", f.id);
@@ -307,13 +307,13 @@ async function toggleStatus(f) {
 
 async function toggleRating(f, value) {
   const newRating = f.rating === value ? null : value;
-  const { error } = await supabase.from("films").update({ rating: newRating }).eq("id", f.id);
+  const { error } = await supabaseClient.from("films").update({ rating: newRating }).eq("id", f.id);
   if (!error) await loadFilms();
 }
 
 async function deleteFilm(f) {
   if (!confirm(`Remove "${f.title}" from your log?`)) return;
-  const { error } = await supabase.from("films").delete().eq("id", f.id);
+  const { error } = await supabaseClient.from("films").delete().eq("id", f.id);
   if (!error) await loadFilms();
 }
 
