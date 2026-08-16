@@ -88,10 +88,6 @@
           </div>
 
           <label class="field">
-            <span>Director <em>(usually autofilled — edit if it looks wrong)</em></span>
-            <input type="text" id="draft-director" placeholder="">
-          </label>
-          <label class="field">
             <span>Tags <em>(comma separated — e.g. "study reference, criterion, 16mm")</em></span>
             <input type="text" id="draft-tags" placeholder="">
           </label>
@@ -123,22 +119,27 @@
           <button class="filter-chip" data-loggedby="D">D</button>
           <button class="filter-chip" data-loggedby="M">M</button>
         </div>
+      </div>
+      <div class="filters-row">
+        <input type="text" id="search-filter" class="tag-filter-input" placeholder="search title, director, tag, genre, or a year like 1970…">
         <select id="sort-select" class="sort-select">
           <option value="added_desc">Newest logged</option>
           <option value="added_asc">Oldest logged</option>
           <option value="year_desc">Release year ↓</option>
           <option value="year_asc">Release year ↑</option>
           <option value="title_asc">Title A–Z</option>
+          <option value="decade_1920">1920s</option>
+          <option value="decade_1930">1930s</option>
+          <option value="decade_1940">1940s</option>
+          <option value="decade_1950">1950s</option>
+          <option value="decade_1960">1960s</option>
+          <option value="decade_1970">1970s</option>
+          <option value="decade_1980">1980s</option>
+          <option value="decade_1990">1990s</option>
+          <option value="decade_2000">2000s</option>
+          <option value="decade_2010">2010s</option>
+          <option value="decade_2020">2020s</option>
         </select>
-      </div>
-      <div class="filters-row">
-        <input type="text" id="tag-filter" class="tag-filter-input" placeholder="tag or genre…">
-        <input type="text" id="director-filter" class="tag-filter-input" placeholder="director…">
-        <div class="year-range">
-          <input type="number" id="year-from" class="year-input" placeholder="Year from" inputmode="numeric">
-          <span class="year-dash">–</span>
-          <input type="number" id="year-to" class="year-input" placeholder="Year to" inputmode="numeric">
-        </div>
       </div>
     </section>
 
