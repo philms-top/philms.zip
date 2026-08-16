@@ -80,8 +80,17 @@
               <button type="button" class="toggle-btn" data-field="rating" data-value="disliked">✕ Disliked</button>
               <button type="button" class="toggle-btn" data-field="rating" data-value="">No rating</button>
             </div>
+            <div class="toggle-group" role="group" aria-label="Logged by">
+              <button type="button" class="toggle-btn" data-field="logged_by" data-value="D">D</button>
+              <button type="button" class="toggle-btn" data-field="logged_by" data-value="M">M</button>
+              <button type="button" class="toggle-btn" data-field="logged_by" data-value="">—</button>
+            </div>
           </div>
 
+          <label class="field">
+            <span>Director <em>(usually autofilled — edit if it looks wrong)</em></span>
+            <input type="text" id="draft-director" placeholder="">
+          </label>
           <label class="field">
             <span>Tags <em>(comma separated — e.g. "study reference, criterion, 16mm")</em></span>
             <input type="text" id="draft-tags" placeholder="">
@@ -101,21 +110,36 @@
 
     <!-- FILTERS -->
     <section class="filters">
-      <div class="filter-group" id="filter-status">
-        <button class="filter-chip is-active" data-filter="all">All</button>
-        <button class="filter-chip" data-filter="not_watched">Not watched</button>
-        <button class="filter-chip" data-filter="watched">Watched</button>
-        <button class="filter-chip" data-filter="loved">Loved</button>
-        <button class="filter-chip" data-filter="disliked">Disliked</button>
+      <div class="filters-row">
+        <div class="filter-group" id="filter-status">
+          <button class="filter-chip is-active" data-filter="all">All</button>
+          <button class="filter-chip" data-filter="not_watched">Not watched</button>
+          <button class="filter-chip" data-filter="watched">Watched</button>
+          <button class="filter-chip" data-filter="loved">Loved</button>
+          <button class="filter-chip" data-filter="disliked">Disliked</button>
+        </div>
+        <div class="filter-group" id="filter-logged-by">
+          <button class="filter-chip is-active" data-loggedby="all">Both</button>
+          <button class="filter-chip" data-loggedby="D">D</button>
+          <button class="filter-chip" data-loggedby="M">M</button>
+        </div>
+        <select id="sort-select" class="sort-select">
+          <option value="added_desc">Newest logged</option>
+          <option value="added_asc">Oldest logged</option>
+          <option value="year_desc">Release year ↓</option>
+          <option value="year_asc">Release year ↑</option>
+          <option value="title_asc">Title A–Z</option>
+        </select>
       </div>
-      <input type="text" id="tag-filter" class="tag-filter-input" placeholder="filter by tag or genre…">
-      <select id="sort-select" class="sort-select">
-        <option value="added_desc">Newest logged</option>
-        <option value="added_asc">Oldest logged</option>
-        <option value="year_desc">Release year ↓</option>
-        <option value="year_asc">Release year ↑</option>
-        <option value="title_asc">Title A–Z</option>
-      </select>
+      <div class="filters-row">
+        <input type="text" id="tag-filter" class="tag-filter-input" placeholder="tag or genre…">
+        <input type="text" id="director-filter" class="tag-filter-input" placeholder="director…">
+        <div class="year-range">
+          <input type="number" id="year-from" class="year-input" placeholder="Year from" inputmode="numeric">
+          <span class="year-dash">–</span>
+          <input type="number" id="year-to" class="year-input" placeholder="Year to" inputmode="numeric">
+        </div>
+      </div>
     </section>
 
     <!-- CONTACT SHEET GRID -->
@@ -124,6 +148,58 @@
 
   </section>
 
+</div>
+
+<!-- ============ EDIT MODAL ============ -->
+<div id="edit-modal" class="modal-overlay" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-label="Edit entry">
+    <button id="modal-close" class="modal-close" aria-label="Close">✕</button>
+    <div class="modal-body">
+      <div class="modal-poster">
+        <img id="modal-poster-img" alt="">
+      </div>
+      <div class="modal-fields">
+        <div class="modal-index mono" id="modal-index"></div>
+        <h3 id="modal-title" class="draft-title"></h3>
+        <p id="modal-meta" class="draft-meta mono"></p>
+
+        <div class="draft-controls">
+          <div class="toggle-group" role="group" aria-label="Watched status">
+            <button type="button" class="toggle-btn" data-mfield="status" data-value="not_watched">Not watched</button>
+            <button type="button" class="toggle-btn" data-mfield="status" data-value="watched">Watched</button>
+          </div>
+          <div class="toggle-group" role="group" aria-label="Rating">
+            <button type="button" class="toggle-btn" data-mfield="rating" data-value="loved">♥ Loved</button>
+            <button type="button" class="toggle-btn" data-mfield="rating" data-value="disliked">✕ Disliked</button>
+            <button type="button" class="toggle-btn" data-mfield="rating" data-value="">No rating</button>
+          </div>
+          <div class="toggle-group" role="group" aria-label="Logged by">
+            <button type="button" class="toggle-btn" data-mfield="logged_by" data-value="D">D</button>
+            <button type="button" class="toggle-btn" data-mfield="logged_by" data-value="M">M</button>
+            <button type="button" class="toggle-btn" data-mfield="logged_by" data-value="">—</button>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Director</span>
+          <input type="text" id="modal-director" placeholder="">
+        </label>
+        <label class="field">
+          <span>Tags <em>(comma separated)</em></span>
+          <input type="text" id="modal-tags" placeholder="">
+        </label>
+        <label class="field">
+          <span>Notes</span>
+          <textarea id="modal-notes" rows="5" placeholder=""></textarea>
+        </label>
+
+        <div class="draft-actions">
+          <button id="modal-save" class="btn btn-primary">Save changes</button>
+          <button id="modal-delete" class="btn btn-ghost modal-delete">Remove entry</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
