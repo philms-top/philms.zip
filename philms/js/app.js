@@ -4,9 +4,14 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 // State
 // ---------------------------------------------------------------------------
 let films = [];
-let currentDraft = null; // { tmdb details..., status, rating }
+let currentDraft = null;     // new entry being built from a TMDB result
+let currentEdit = null;      // existing entry open in the modal { ...row, _dirty }
 let activeStatusFilter = "all";
+let activeLoggedByFilter = "all";
 let activeTagFilter = "";
+let activeDirectorFilter = "";
+let yearFrom = null;
+let yearTo = null;
 let activeSort = "added_desc";
 
 const el = (id) => document.getElementById(id);
@@ -56,7 +61,7 @@ el("logout-btn").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// TMDB search
+// TMDB search → new entry draft
 // ---------------------------------------------------------------------------
 el("search-btn").addEventListener("click", runSearch);
 el("search-input").addEventListener("keydown", (e) => {
@@ -110,6 +115,7 @@ async function selectResult(tmdbId) {
     ...data.details,
     status: "not_watched",
     rating: "",
+    logged_by: "",
   };
   renderDraft();
 }
@@ -121,13 +127,15 @@ function renderDraft() {
 
   el("draft-poster-img").src = currentDraft.poster_path || placeholderPoster();
   el("draft-title").textContent = currentDraft.title;
-  const metaBits = [currentDraft.year, currentDraft.director, currentDraft.runtime ? `${currentDraft.runtime} min` : null, (currentDraft.genres || []).join(", ")].filter(Boolean);
+  const metaBits = [currentDraft.year, currentDraft.runtime ? `${currentDraft.runtime} min` : null, (currentDraft.genres || []).join(", ")].filter(Boolean);
   el("draft-meta").textContent = metaBits.join("  ·  ");
+  el("draft-director").value = currentDraft.director || "";
   el("draft-tags").value = "";
   el("draft-notes").value = "";
 
-  syncToggleGroup("status", currentDraft.status);
-  syncToggleGroup("rating", currentDraft.rating);
+  syncToggleGroup("status", "field", currentDraft.status);
+  syncToggleGroup("rating", "field", currentDraft.rating);
+  syncToggleGroup("logged_by", "field", currentDraft.logged_by);
 }
 
 function hideDraft() {
@@ -135,18 +143,28 @@ function hideDraft() {
   currentDraft = null;
 }
 
-document.querySelectorAll(".toggle-btn").forEach((btn) => {
+document.querySelectorAll(".toggle-btn[data-field]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const field = btn.dataset.field;
     const value = btn.dataset.value;
     if (!currentDraft) return;
     currentDraft[field] = value;
-    syncToggleGroup(field, value);
+    syncToggleGroup(field, "field", value);
   });
 });
 
-function syncToggleGroup(field, value) {
-  document.querySelectorAll(`.toggle-btn[data-field="${field}"]`).forEach((b) => {
+document.querySelectorAll(".toggle-btn[data-mfield]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const field = btn.dataset.mfield;
+    const value = btn.dataset.value;
+    if (!currentEdit) return;
+    currentEdit[field] = value;
+    syncToggleGroup(field, "mfield", value);
+  });
+});
+
+function syncToggleGroup(field, attr, value) {
+  document.querySelectorAll(`.toggle-btn[data-${attr}="${field}"]`).forEach((b) => {
     b.classList.toggle("is-selected", b.dataset.value === value);
   });
 }
@@ -163,18 +181,20 @@ el("draft-save").addEventListener("click", async () => {
 
   const tags = el("draft-tags").value.split(",").map((t) => t.trim()).filter(Boolean);
   const notes = el("draft-notes").value.trim();
+  const director = el("draft-director").value.trim();
 
   const record = {
     user_id: user.id,
     title: currentDraft.title,
     tmdb_id: currentDraft.id,
     release_year: currentDraft.year ? parseInt(currentDraft.year, 10) : null,
-    director: currentDraft.director,
+    director,
     genres: currentDraft.genres || [],
     poster_path: currentDraft.poster_path,
     runtime: currentDraft.runtime,
     status: currentDraft.status,
     rating: currentDraft.rating || null,
+    logged_by: currentDraft.logged_by || null,
     tags,
     notes,
     watched_at: currentDraft.status === "watched" ? new Date().toISOString() : null,
@@ -193,6 +213,74 @@ el("draft-save").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Edit modal (existing entries)
+// ---------------------------------------------------------------------------
+function openEditModal(f, indexInFullList) {
+  currentEdit = { ...f };
+
+  el("modal-index").textContent = `No. ${String(indexInFullList).padStart(3, "0")}`;
+  el("modal-poster-img").src = f.poster_path || placeholderPoster();
+  el("modal-title").textContent = f.title;
+  const metaBits = [f.release_year, f.runtime ? `${f.runtime} min` : null, (f.genres || []).join(", ")].filter(Boolean);
+  el("modal-meta").textContent = metaBits.join("  ·  ");
+  el("modal-director").value = f.director || "";
+  el("modal-tags").value = (f.tags || []).join(", ");
+  el("modal-notes").value = f.notes || "";
+
+  syncToggleGroup("status", "mfield", f.status);
+  syncToggleGroup("rating", "mfield", f.rating);
+  syncToggleGroup("logged_by", "mfield", f.logged_by);
+
+  el("edit-modal").hidden = false;
+}
+
+function closeEditModal() {
+  el("edit-modal").hidden = true;
+  currentEdit = null;
+}
+
+el("modal-close").addEventListener("click", closeEditModal);
+el("edit-modal").addEventListener("click", (e) => {
+  if (e.target.id === "edit-modal") closeEditModal();
+});
+
+el("modal-save").addEventListener("click", async () => {
+  if (!currentEdit) return;
+
+  const tags = el("modal-tags").value.split(",").map((t) => t.trim()).filter(Boolean);
+  const notes = el("modal-notes").value.trim();
+  const director = el("modal-director").value.trim();
+
+  const updates = {
+    status: currentEdit.status,
+    rating: currentEdit.rating || null,
+    logged_by: currentEdit.logged_by || null,
+    director,
+    tags,
+    notes,
+    watched_at: currentEdit.status === "watched" ? (currentEdit.watched_at || new Date().toISOString()) : null,
+  };
+
+  const { error } = await supabaseClient.from("films").update(updates).eq("id", currentEdit.id);
+  if (error) {
+    alert("Couldn't save: " + error.message);
+    return;
+  }
+  closeEditModal();
+  await loadFilms();
+});
+
+el("modal-delete").addEventListener("click", async () => {
+  if (!currentEdit) return;
+  if (!confirm(`Remove "${currentEdit.title}" from your log?`)) return;
+  const { error } = await supabaseClient.from("films").delete().eq("id", currentEdit.id);
+  if (!error) {
+    closeEditModal();
+    await loadFilms();
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Load + render the log
 // ---------------------------------------------------------------------------
 async function loadFilms() {
@@ -205,17 +293,40 @@ async function loadFilms() {
   render();
 }
 
-document.querySelectorAll(".filter-chip").forEach((chip) => {
+document.querySelectorAll("#filter-status .filter-chip").forEach((chip) => {
   chip.addEventListener("click", () => {
-    document.querySelectorAll(".filter-chip").forEach((c) => c.classList.remove("is-active"));
+    document.querySelectorAll("#filter-status .filter-chip").forEach((c) => c.classList.remove("is-active"));
     chip.classList.add("is-active");
     activeStatusFilter = chip.dataset.filter;
     render();
   });
 });
 
+document.querySelectorAll("#filter-logged-by .filter-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll("#filter-logged-by .filter-chip").forEach((c) => c.classList.remove("is-active"));
+    chip.classList.add("is-active");
+    activeLoggedByFilter = chip.dataset.loggedby;
+    render();
+  });
+});
+
 el("tag-filter").addEventListener("input", (e) => {
   activeTagFilter = e.target.value.trim().toLowerCase();
+  render();
+});
+
+el("director-filter").addEventListener("input", (e) => {
+  activeDirectorFilter = e.target.value.trim().toLowerCase();
+  render();
+});
+
+el("year-from").addEventListener("input", (e) => {
+  yearFrom = e.target.value ? parseInt(e.target.value, 10) : null;
+  render();
+});
+el("year-to").addEventListener("input", (e) => {
+  yearTo = e.target.value ? parseInt(e.target.value, 10) : null;
   render();
 });
 
@@ -232,12 +343,23 @@ function getFiltered() {
   else if (activeStatusFilter === "loved") list = list.filter((f) => f.rating === "loved");
   else if (activeStatusFilter === "disliked") list = list.filter((f) => f.rating === "disliked");
 
+  if (activeLoggedByFilter === "D" || activeLoggedByFilter === "M") {
+    list = list.filter((f) => f.logged_by === activeLoggedByFilter);
+  }
+
   if (activeTagFilter) {
     list = list.filter((f) => {
       const hay = [...(f.tags || []), ...(f.genres || [])].join(" ").toLowerCase();
       return hay.includes(activeTagFilter);
     });
   }
+
+  if (activeDirectorFilter) {
+    list = list.filter((f) => (f.director || "").toLowerCase().includes(activeDirectorFilter));
+  }
+
+  if (yearFrom !== null) list = list.filter((f) => (f.release_year || 0) >= yearFrom);
+  if (yearTo !== null) list = list.filter((f) => (f.release_year || 0) <= yearTo);
 
   switch (activeSort) {
     case "added_asc": list.sort((a, b) => new Date(a.added_at) - new Date(b.added_at)); break;
@@ -270,13 +392,18 @@ function render() {
         ? `<span class="frame-stamp disliked">Disliked</span>`
         : "";
 
+    const loggedByBadge = f.logged_by ? `<span class="loggedby-badge" title="Logged by ${f.logged_by}">${f.logged_by}</span>` : "";
+
     frame.innerHTML = `
-      <div class="frame-index mono">No. ${String(indexInFullList).padStart(3, "0")}</div>
-      <div class="frame-poster">
+      <div class="frame-index mono">
+        <span>No. ${String(indexInFullList).padStart(3, "0")}</span>
+        ${loggedByBadge}
+      </div>
+      <div class="frame-poster frame-clickable">
         <img src="${f.poster_path || placeholderPoster()}" alt="">
         ${stamp}
       </div>
-      <h3 class="frame-title">${escapeHtml(f.title)}</h3>
+      <h3 class="frame-title frame-clickable">${escapeHtml(f.title)}</h3>
       <div class="frame-meta">${f.release_year || "—"}${f.director ? " · " + escapeHtml(f.director) : ""}</div>
       ${(f.tags && f.tags.length) ? `<div class="frame-tags">${f.tags.map(escapeHtml).join(", ")}</div>` : ""}
       <div class="frame-quick">
@@ -287,6 +414,9 @@ function render() {
       </div>
     `;
 
+    frame.querySelectorAll(".frame-clickable").forEach((node) => {
+      node.addEventListener("click", () => openEditModal(f, indexInFullList));
+    });
     frame.querySelector('[data-action="toggle-watched"]').addEventListener("click", () => toggleStatus(f));
     frame.querySelector('[data-action="toggle-loved"]').addEventListener("click", () => toggleRating(f, "loved"));
     frame.querySelector('[data-action="toggle-disliked"]').addEventListener("click", () => toggleRating(f, "disliked"));
