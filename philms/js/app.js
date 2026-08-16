@@ -5,13 +5,10 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 // ---------------------------------------------------------------------------
 let films = [];
 let currentDraft = null;     // new entry being built from a TMDB result
-let currentEdit = null;      // existing entry open in the modal { ...row, _dirty }
+let currentEdit = null;      // existing entry open in the modal
 let activeStatusFilter = "all";
 let activeLoggedByFilter = "all";
-let activeTagFilter = "";
-let activeDirectorFilter = "";
-let yearFrom = null;
-let yearTo = null;
+let activeSearch = "";
 let activeSort = "added_desc";
 
 const el = (id) => document.getElementById(id);
@@ -127,9 +124,8 @@ function renderDraft() {
 
   el("draft-poster-img").src = currentDraft.poster_path || placeholderPoster();
   el("draft-title").textContent = currentDraft.title;
-  const metaBits = [currentDraft.year, currentDraft.runtime ? `${currentDraft.runtime} min` : null, (currentDraft.genres || []).join(", ")].filter(Boolean);
+  const metaBits = [currentDraft.year, currentDraft.director, currentDraft.runtime ? `${currentDraft.runtime} min` : null, (currentDraft.genres || []).join(", ")].filter(Boolean);
   el("draft-meta").textContent = metaBits.join("  ·  ");
-  el("draft-director").value = currentDraft.director || "";
   el("draft-tags").value = "";
   el("draft-notes").value = "";
 
@@ -181,14 +177,13 @@ el("draft-save").addEventListener("click", async () => {
 
   const tags = el("draft-tags").value.split(",").map((t) => t.trim()).filter(Boolean);
   const notes = el("draft-notes").value.trim();
-  const director = el("draft-director").value.trim();
 
   const record = {
     user_id: user.id,
     title: currentDraft.title,
     tmdb_id: currentDraft.id,
     release_year: currentDraft.year ? parseInt(currentDraft.year, 10) : null,
-    director,
+    director: currentDraft.director || null,
     genres: currentDraft.genres || [],
     poster_path: currentDraft.poster_path,
     runtime: currentDraft.runtime,
@@ -311,22 +306,8 @@ document.querySelectorAll("#filter-logged-by .filter-chip").forEach((chip) => {
   });
 });
 
-el("tag-filter").addEventListener("input", (e) => {
-  activeTagFilter = e.target.value.trim().toLowerCase();
-  render();
-});
-
-el("director-filter").addEventListener("input", (e) => {
-  activeDirectorFilter = e.target.value.trim().toLowerCase();
-  render();
-});
-
-el("year-from").addEventListener("input", (e) => {
-  yearFrom = e.target.value ? parseInt(e.target.value, 10) : null;
-  render();
-});
-el("year-to").addEventListener("input", (e) => {
-  yearTo = e.target.value ? parseInt(e.target.value, 10) : null;
+el("search-filter").addEventListener("input", (e) => {
+  activeSearch = e.target.value.trim().toLowerCase();
   render();
 });
 
@@ -347,19 +328,26 @@ function getFiltered() {
     list = list.filter((f) => f.logged_by === activeLoggedByFilter);
   }
 
-  if (activeTagFilter) {
-    list = list.filter((f) => {
-      const hay = [...(f.tags || []), ...(f.genres || [])].join(" ").toLowerCase();
-      return hay.includes(activeTagFilter);
-    });
+  if (activeSearch) {
+    if (/^\d{4}$/.test(activeSearch)) {
+      // a bare 4-digit year is treated as "that whole decade" — typing 1970
+      // or 1974 both surface every '70s title, which is the more useful read.
+      const decade = Math.floor(parseInt(activeSearch, 10) / 10) * 10;
+      list = list.filter((f) => Math.floor((f.release_year || 0) / 10) * 10 === decade);
+    } else {
+      list = list.filter((f) => {
+        const hay = [f.title, f.director, ...(f.tags || []), ...(f.genres || [])].filter(Boolean).join(" ").toLowerCase();
+        return hay.includes(activeSearch);
+      });
+    }
   }
 
-  if (activeDirectorFilter) {
-    list = list.filter((f) => (f.director || "").toLowerCase().includes(activeDirectorFilter));
+  if (activeSort.startsWith("decade_")) {
+    const decade = parseInt(activeSort.split("_")[1], 10);
+    list = list.filter((f) => Math.floor((f.release_year || 0) / 10) * 10 === decade);
+    list.sort((a, b) => (a.release_year || 0) - (b.release_year || 0));
+    return list;
   }
-
-  if (yearFrom !== null) list = list.filter((f) => (f.release_year || 0) >= yearFrom);
-  if (yearTo !== null) list = list.filter((f) => (f.release_year || 0) <= yearTo);
 
   switch (activeSort) {
     case "added_asc": list.sort((a, b) => new Date(a.added_at) - new Date(b.added_at)); break;
